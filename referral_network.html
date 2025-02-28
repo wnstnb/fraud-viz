@@ -1,0 +1,259 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        
+            <script src="lib/bindings/utils.js"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+            
+        
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+        <link
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6"
+          crossorigin="anonymous"
+        />
+        <script
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+          crossorigin="anonymous"
+        ></script>
+
+
+        <center>
+          <h1></h1>
+        </center>
+        <style type="text/css">
+
+             #mynetwork {
+                 width: 800px;
+                 height: 600px;
+                 background-color: #ffffff;
+                 border: 1px solid lightgray;
+                 position: relative;
+                 float: left;
+             }
+
+             
+             #loadingBar {
+                 position:absolute;
+                 top:0px;
+                 left:0px;
+                 width: 800px;
+                 height: 600px;
+                 background-color:rgba(200,200,200,0.8);
+                 -webkit-transition: all 0.5s ease;
+                 -moz-transition: all 0.5s ease;
+                 -ms-transition: all 0.5s ease;
+                 -o-transition: all 0.5s ease;
+                 transition: all 0.5s ease;
+                 opacity:1;
+             }
+
+             #bar {
+                 position:absolute;
+                 top:0px;
+                 left:0px;
+                 width:20px;
+                 height:20px;
+                 margin:auto auto auto auto;
+                 border-radius:11px;
+                 border:2px solid rgba(30,30,30,0.05);
+                 background: rgb(0, 173, 246); /* Old browsers */
+                 box-shadow: 2px 0px 4px rgba(0,0,0,0.4);
+             }
+
+             #border {
+                 position:absolute;
+                 top:10px;
+                 left:10px;
+                 width:500px;
+                 height:23px;
+                 margin:auto auto auto auto;
+                 box-shadow: 0px 0px 4px rgba(0,0,0,0.2);
+                 border-radius:10px;
+             }
+
+             #text {
+                 position:absolute;
+                 top:8px;
+                 left:530px;
+                 width:30px;
+                 height:50px;
+                 margin:auto auto auto auto;
+                 font-size:22px;
+                 color: #000000;
+             }
+
+             div.outerBorder {
+                 position:relative;
+                 top:400px;
+                 width:600px;
+                 height:44px;
+                 margin:auto auto auto auto;
+                 border:8px solid rgba(0,0,0,0.1);
+                 background: rgb(252,252,252); /* Old browsers */
+                 background: -moz-linear-gradient(top,  rgba(252,252,252,1) 0%, rgba(237,237,237,1) 100%); /* FF3.6+ */
+                 background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,rgba(252,252,252,1)), color-stop(100%,rgba(237,237,237,1))); /* Chrome,Safari4+ */
+                 background: -webkit-linear-gradient(top,  rgba(252,252,252,1) 0%,rgba(237,237,237,1) 100%); /* Chrome10+,Safari5.1+ */
+                 background: -o-linear-gradient(top,  rgba(252,252,252,1) 0%,rgba(237,237,237,1) 100%); /* Opera 11.10+ */
+                 background: -ms-linear-gradient(top,  rgba(252,252,252,1) 0%,rgba(237,237,237,1) 100%); /* IE10+ */
+                 background: linear-gradient(to bottom,  rgba(252,252,252,1) 0%,rgba(237,237,237,1) 100%); /* W3C */
+                 filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#fcfcfc', endColorstr='#ededed',GradientType=0 ); /* IE6-9 */
+                 border-radius:72px;
+                 box-shadow: 0px 0px 10px rgba(0,0,0,0.2);
+             }
+             
+
+             
+
+             
+        </style>
+    </head>
+
+
+    <body>
+        <div class="card" style="width: 100%">
+            
+            
+            <div id="mynetwork" class="card-body"></div>
+        </div>
+
+        
+            <div id="loadingBar">
+              <div class="outerBorder">
+                <div id="text">0%</div>
+                <div id="border">
+                  <div id="bar"></div>
+                </div>
+              </div>
+            </div>
+        
+        
+
+        <script type="text/javascript">
+
+              // initialize global variables.
+              var edges;
+              var nodes;
+              var allNodes;
+              var allEdges;
+              var nodeColors;
+              var originalNodes;
+              var network;
+              var container;
+              var options, data;
+              var filter = {
+                  item : '',
+                  property : '',
+                  value : []
+              };
+
+              
+
+              
+
+              // This method is responsible for drawing the graph, returns the drawn network
+              function drawGraph() {
+                  var container = document.getElementById('mynetwork');
+
+                  
+
+                  // parsing and collecting nodes and edges from the python
+                  nodes = new vis.DataSet([{"color": "skyblue", "id": "B", "label": "B", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "PF", "label": "PF", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "XR", "label": "XR", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "X", "label": "X", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "G", "label": "G", "shape": "dot", "size": 25, "title": "Influence: 3"}, {"color": "skyblue", "id": "UU", "label": "UU", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "UK", "label": "UK", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "WC", "label": "WC", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "AB", "label": "AB", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "D", "label": "D", "shape": "dot", "size": 20, "title": "Influence: 2"}, {"color": "skyblue", "id": "GD", "label": "GD", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "JK", "label": "JK", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "C", "label": "C", "shape": "dot", "size": 25, "title": "Influence: 3"}, {"color": "skyblue", "id": "SH", "label": "SH", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "H", "label": "H", "shape": "dot", "size": 20, "title": "Influence: 2"}, {"color": "skyblue", "id": "JC", "label": "JC", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "F", "label": "F", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "S", "label": "S", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "Y", "label": "Y", "shape": "dot", "size": 20, "title": "Influence: 2"}, {"color": "skyblue", "id": "RD", "label": "RD", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "BC", "label": "BC", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "BJ", "label": "BJ", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "U", "label": "U", "shape": "dot", "size": 30, "title": "Influence: 4"}, {"color": "skyblue", "id": "LX", "label": "LX", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "SV", "label": "SV", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "YP", "label": "YP", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "K", "label": "K", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "OG", "label": "OG", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "E", "label": "E", "shape": "dot", "size": 25, "title": "Influence: 3"}, {"color": "skyblue", "id": "NH", "label": "NH", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "BS", "label": "BS", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "FQ", "label": "FQ", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "P", "label": "P", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "AP", "label": "AP", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "LO", "label": "LO", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "CS", "label": "CS", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "AM", "label": "AM", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "AR", "label": "AR", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "IH", "label": "IH", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "J", "label": "J", "shape": "dot", "size": 35, "title": "Influence: 5"}, {"color": "skyblue", "id": "HH", "label": "HH", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "A", "label": "A", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "W", "label": "W", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "LM", "label": "LM", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "AD", "label": "AD", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "SO", "label": "SO", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "BM", "label": "BM", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "R", "label": "R", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "CF", "label": "CF", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "L", "label": "L", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "ED", "label": "ED", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "UD", "label": "UD", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "MI", "label": "MI", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "JN", "label": "JN", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "AA", "label": "AA", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "PC", "label": "PC", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "AI", "label": "AI", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "Q", "label": "Q", "shape": "dot", "size": 25, "title": "Influence: 3"}, {"color": "skyblue", "id": "IU", "label": "IU", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "T", "label": "T", "shape": "dot", "size": 30, "title": "Influence: 4"}, {"color": "skyblue", "id": "KW", "label": "KW", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "NO", "label": "NO", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "XF", "label": "XF", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "FN", "label": "FN", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "HW", "label": "HW", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "M", "label": "M", "shape": "dot", "size": 20, "title": "Influence: 2"}, {"color": "skyblue", "id": "NV", "label": "NV", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "SB", "label": "SB", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "AC", "label": "AC", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "GH", "label": "GH", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "LW", "label": "LW", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "I", "label": "I", "shape": "dot", "size": 20, "title": "Influence: 2"}, {"color": "skyblue", "id": "EK", "label": "EK", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "CC", "label": "CC", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "TK", "label": "TK", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "OA", "label": "OA", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "V", "label": "V", "shape": "dot", "size": 25, "title": "Influence: 3"}, {"color": "skyblue", "id": "N", "label": "N", "shape": "dot", "size": 25, "title": "Influence: 3"}, {"color": "skyblue", "id": "FD", "label": "FD", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "SS", "label": "SS", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "QA", "label": "QA", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "VM", "label": "VM", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "SE", "label": "SE", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "VU", "label": "VU", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "O", "label": "O", "shape": "dot", "size": 25, "title": "Influence: 3"}, {"color": "skyblue", "id": "WD", "label": "WD", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "OU", "label": "OU", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "BG", "label": "BG", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "KQ", "label": "KQ", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "ID", "label": "ID", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "CV", "label": "CV", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "DX", "label": "DX", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "TL", "label": "TL", "shape": "dot", "size": 20, "title": "Influence: 2"}, {"color": "skyblue", "id": "VP", "label": "VP", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "SM", "label": "SM", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "YE", "label": "YE", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "WZ", "label": "WZ", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "WX", "label": "WX", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "JL", "label": "JL", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "DG", "label": "DG", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "FO", "label": "FO", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "SJ", "label": "SJ", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "ON", "label": "ON", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "SX", "label": "SX", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "OM", "label": "OM", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "OJ", "label": "OJ", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "YG", "label": "YG", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "RJ", "label": "RJ", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "IS", "label": "IS", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "YB", "label": "YB", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "KM", "label": "KM", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "XY", "label": "XY", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "Z", "label": "Z", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "GG", "label": "GG", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "QQ", "label": "QQ", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "FH", "label": "FH", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "UA", "label": "UA", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "TE", "label": "TE", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "QC", "label": "QC", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "BV", "label": "BV", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "XM", "label": "XM", "shape": "dot", "size": 10, "title": "Influence: 0"}, {"color": "skyblue", "id": "IX", "label": "IX", "shape": "dot", "size": 15, "title": "Influence: 1"}, {"color": "skyblue", "id": "RW", "label": "RW", "shape": "dot", "size": 10, "title": "Influence: 0"}]);
+                  edges = new vis.DataSet([{"arrows": "to", "from": "B", "to": "PF"}, {"arrows": "to", "from": "XR", "to": "X"}, {"arrows": "to", "from": "G", "to": "UU"}, {"arrows": "to", "from": "G", "to": "L"}, {"arrows": "to", "from": "G", "to": "D"}, {"arrows": "to", "from": "UK", "to": "WC"}, {"arrows": "to", "from": "AB", "to": "D"}, {"arrows": "to", "from": "D", "to": "P"}, {"arrows": "to", "from": "D", "to": "Q"}, {"arrows": "to", "from": "GD", "to": "JK"}, {"arrows": "to", "from": "C", "to": "SH"}, {"arrows": "to", "from": "C", "to": "BS"}, {"arrows": "to", "from": "C", "to": "FQ"}, {"arrows": "to", "from": "H", "to": "JC"}, {"arrows": "to", "from": "H", "to": "AP"}, {"arrows": "to", "from": "F", "to": "S"}, {"arrows": "to", "from": "S", "to": "E"}, {"arrows": "to", "from": "Y", "to": "RD"}, {"arrows": "to", "from": "Y", "to": "QC"}, {"arrows": "to", "from": "BC", "to": "BJ"}, {"arrows": "to", "from": "U", "to": "LX"}, {"arrows": "to", "from": "U", "to": "K"}, {"arrows": "to", "from": "U", "to": "A"}, {"arrows": "to", "from": "U", "to": "YE"}, {"arrows": "to", "from": "SV", "to": "S"}, {"arrows": "to", "from": "YP", "to": "H"}, {"arrows": "to", "from": "OG", "to": "E"}, {"arrows": "to", "from": "E", "to": "NH"}, {"arrows": "to", "from": "E", "to": "DG"}, {"arrows": "to", "from": "E", "to": "GG"}, {"arrows": "to", "from": "P", "to": "KW"}, {"arrows": "to", "from": "LO", "to": "CS"}, {"arrows": "to", "from": "AM", "to": "AR"}, {"arrows": "to", "from": "AR", "to": "I"}, {"arrows": "to", "from": "IH", "to": "E"}, {"arrows": "to", "from": "J", "to": "HH"}, {"arrows": "to", "from": "J", "to": "FD"}, {"arrows": "to", "from": "J", "to": "VU"}, {"arrows": "to", "from": "J", "to": "V"}, {"arrows": "to", "from": "J", "to": "G"}, {"arrows": "to", "from": "W", "to": "LM"}, {"arrows": "to", "from": "AD", "to": "C"}, {"arrows": "to", "from": "SO", "to": "H"}, {"arrows": "to", "from": "BM", "to": "R"}, {"arrows": "to", "from": "CF", "to": "E"}, {"arrows": "to", "from": "L", "to": "QQ"}, {"arrows": "to", "from": "ED", "to": "S"}, {"arrows": "to", "from": "UD", "to": "MI"}, {"arrows": "to", "from": "JN", "to": "AA"}, {"arrows": "to", "from": "PC", "to": "H"}, {"arrows": "to", "from": "AI", "to": "K"}, {"arrows": "to", "from": "Q", "to": "IU"}, {"arrows": "to", "from": "Q", "to": "BG"}, {"arrows": "to", "from": "Q", "to": "R"}, {"arrows": "to", "from": "T", "to": "P"}, {"arrows": "to", "from": "T", "to": "NO"}, {"arrows": "to", "from": "T", "to": "WZ"}, {"arrows": "to", "from": "T", "to": "R"}, {"arrows": "to", "from": "KW", "to": "W"}, {"arrows": "to", "from": "XF", "to": "F"}, {"arrows": "to", "from": "FN", "to": "HW"}, {"arrows": "to", "from": "M", "to": "NV"}, {"arrows": "to", "from": "M", "to": "YG"}, {"arrows": "to", "from": "SB", "to": "AC"}, {"arrows": "to", "from": "GH", "to": "LW"}, {"arrows": "to", "from": "I", "to": "OU"}, {"arrows": "to", "from": "I", "to": "S"}, {"arrows": "to", "from": "EK", "to": "C"}, {"arrows": "to", "from": "CC", "to": "K"}, {"arrows": "to", "from": "TK", "to": "OA"}, {"arrows": "to", "from": "V", "to": "N"}, {"arrows": "to", "from": "V", "to": "CV"}, {"arrows": "to", "from": "V", "to": "KM"}, {"arrows": "to", "from": "N", "to": "DG"}, {"arrows": "to", "from": "N", "to": "Y"}, {"arrows": "to", "from": "N", "to": "FH"}, {"arrows": "to", "from": "SS", "to": "QA"}, {"arrows": "to", "from": "VM", "to": "SE"}, {"arrows": "to", "from": "SE", "to": "Z"}, {"arrows": "to", "from": "O", "to": "B"}, {"arrows": "to", "from": "O", "to": "X"}, {"arrows": "to", "from": "O", "to": "C"}, {"arrows": "to", "from": "WD", "to": "W"}, {"arrows": "to", "from": "KQ", "to": "ID"}, {"arrows": "to", "from": "DX", "to": "L"}, {"arrows": "to", "from": "TL", "to": "X"}, {"arrows": "to", "from": "TL", "to": "E"}, {"arrows": "to", "from": "VP", "to": "SM"}, {"arrows": "to", "from": "WX", "to": "JL"}, {"arrows": "to", "from": "FO", "to": "SJ"}, {"arrows": "to", "from": "ON", "to": "SX"}, {"arrows": "to", "from": "OM", "to": "OJ"}, {"arrows": "to", "from": "RJ", "to": "V"}, {"arrows": "to", "from": "IS", "to": "YB"}, {"arrows": "to", "from": "XY", "to": "W"}, {"arrows": "to", "from": "UA", "to": "G"}, {"arrows": "to", "from": "TE", "to": "FD"}, {"arrows": "to", "from": "BV", "to": "XM"}, {"arrows": "to", "from": "IX", "to": "RW"}]);
+
+                  nodeColors = {};
+                  allNodes = nodes.get({ returnType: "Object" });
+                  for (nodeId in allNodes) {
+                    nodeColors[nodeId] = allNodes[nodeId].color;
+                  }
+                  allEdges = edges.get({ returnType: "Object" });
+                  // adding nodes and edges to the graph
+                  data = {nodes: nodes, edges: edges};
+
+                  var options = {
+    "configure": {
+        "enabled": false
+    },
+    "edges": {
+        "color": {
+            "inherit": true
+        },
+        "smooth": {
+            "enabled": true,
+            "type": "dynamic"
+        }
+    },
+    "interaction": {
+        "dragNodes": true,
+        "hideEdgesOnDrag": false,
+        "hideNodesOnDrag": false
+    },
+    "physics": {
+        "enabled": true,
+        "forceAtlas2Based": {
+            "avoidOverlap": 0,
+            "centralGravity": 0.01,
+            "damping": 0.4,
+            "gravitationalConstant": -50,
+            "springConstant": 0.08,
+            "springLength": 100
+        },
+        "solver": "forceAtlas2Based",
+        "stabilization": {
+            "enabled": true,
+            "fit": true,
+            "iterations": 1000,
+            "onlyDynamicEdges": false,
+            "updateInterval": 50
+        }
+    }
+};
+
+                  
+
+
+                  
+
+                  network = new vis.Network(container, data, options);
+
+                  
+
+                  
+
+                  
+
+
+                  
+                      network.on("stabilizationProgress", function(params) {
+                          document.getElementById('loadingBar').removeAttribute("style");
+                          var maxWidth = 496;
+                          var minWidth = 20;
+                          var widthFactor = params.iterations/params.total;
+                          var width = Math.max(minWidth,maxWidth * widthFactor);
+                          document.getElementById('bar').style.width = width + 'px';
+                          document.getElementById('text').innerHTML = Math.round(widthFactor*100) + '%';
+                      });
+                      network.once("stabilizationIterationsDone", function() {
+                          document.getElementById('text').innerHTML = '100%';
+                          document.getElementById('bar').style.width = '496px';
+                          document.getElementById('loadingBar').style.opacity = 0;
+                          // really clean the dom element
+                          setTimeout(function () {document.getElementById('loadingBar').style.display = 'none';}, 500);
+                      });
+                  
+
+                  return network;
+
+              }
+              drawGraph();
+        </script>
+    </body>
+</html>

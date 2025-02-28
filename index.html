@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!-- <title>D3 Responsive Force-Directed Graph with Zoom, Focus, Persistent & Mixed Highlighting</title> -->
+  <title>Referral Code Graph</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    svg {
+      display: block;
+    }
+    /* Style for the control panel */
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 10;
+      background: rgba(255,255,255,0.8);
+      padding: 5px;
+      border-radius: 5px;
+    }
+    #controls input, #controls button {
+      padding: 5px;
+      font-size: 14px;
+      margin: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <input id="codeInput" type="text" placeholder="Enter code..." />
+    <button id="highlightButton">Highlight</button>
+    <button id="clearButton">Clear Highlight</button>
+  </div>
+  
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script>
+    let width = window.innerWidth,
+        height = window.innerHeight;
+    
+    // Variable to hold the persistent highlighted node id (if any)
+    let persistentHighlight = null;
+
+    // Create the SVG container with a viewBox for responsiveness
+    const svg = d3.select("body").append("svg")
+                    .style("margin", 0)
+                    .style("padding", 0)
+                    .style("background-color", "#2C2C2C")
+                  .attr("width", width)
+                  .attr("height", height)
+                  .attr("viewBox", `0 0 ${width} ${height}`);
+
+    // Append a container <g> to hold all graph elements
+    const container = svg.append("g");
+
+    // Define zoom behavior and store its reference
+    const zoomBehavior = d3.zoom()
+      .scaleExtent([0.1, 10])
+      .on("zoom", (event) => {
+        container.attr("transform", event.transform);
+      });
+    svg.call(zoomBehavior);
+
+    // Load the graph data from the JSON file
+    d3.json("graph_data.json").then(function(graph) {
+
+      // (Optional) If your nodes have dates, parse them:
+      // graph.nodes.forEach(n => {
+      //   n.openedDate = new Date(n.date_account_opened);
+      // });
+
+      // Set up the force simulation
+      const simulation = d3.forceSimulation(graph.nodes)
+                           .force("link", d3.forceLink(graph.links)
+                                             .id(d => d.id)
+                                             .distance(80))
+                           .force("charge", d3.forceManyBody().strength(-200))
+                           .force("center", d3.forceCenter(width / 2, height / 2));
+
+      // Draw links (edges) inside the container
+      const link = container.append("g")
+                            .attr("class", "links")
+                            .attr("stroke", "#3A3A3A")
+                            .selectAll("line")
+                            .data(graph.links)
+                            .enter().append("line")
+                            .attr("class", "link")
+                            .attr("stroke-width", 1);
+
+      // Draw nodes inside the container
+      const node = container.append("g")
+                            .attr("class", "nodes")
+                            .selectAll("g")
+                            .data(graph.nodes)
+                            .enter().append("g")
+                            .attr("class", "node")
+                            .call(d3.drag()
+                              .on("start", dragstarted)
+                              .on("drag", dragged)
+                              .on("end", dragended));
+
+      // Append circles for nodes (size scaled by influence)
+      node.append("circle")
+          .attr("r", d => 5 + d.influence)
+          .attr("fill", "#666666");  // default color
+
+      // Append text labels only for nodes with influence > 5
+      node.append("text")
+          .attr("x", 8)
+          .attr("y", 3)
+          .text(d => d.influence > 5 ? d.id : "")
+          .style("font-size", "10px");
+
+      // Create a tooltip div for hover details
+      const tooltip = d3.select("body").append("div")
+                        .style("position", "absolute")
+                        .style("text-align", "left")
+                        .style("padding", "5px")
+                        .style("font", "10px sans-serif")
+                        .style("background", "lightsteelblue")
+                        .style("border", "0px")
+                        .style("border-radius", "8px")
+                        .style("pointer-events", "none")
+                        .style("opacity", 0);
+
+      // Helper function: compute forward connections (BFS following outgoing edges)
+      // Here we simply follow links from the node; you could incorporate date logic if needed.
+      function computeForwardConnections(startId) {
+        const visited = new Set();
+        const queue = [startId];
+        while (queue.length) {
+          const current = queue.shift();
+          if (!visited.has(current)) {
+            visited.add(current);
+            graph.links.forEach(l => {
+              // Follow outgoing edge if current is the source.
+              if (l.source.id === current) {
+                if (!visited.has(l.target.id)) {
+                  queue.push(l.target.id);
+                }
+              }
+            });
+          }
+        }
+        return visited;
+      }
+
+      // Function to highlight a node, its full forward connectivity, and one level of incoming neighbors.
+      function highlightNode(code) {
+        // Compute forward connectivity (all nodes reachable following outgoing edges)
+        const forwardSet = computeForwardConnections(code);
+        // Compute one-level incoming connections: nodes that directly point to the selected node.
+        const incomingSet = new Set();
+        graph.links.forEach(l => {
+          if (l.target.id === code) {
+            incomingSet.add(l.source.id);
+          }
+        });
+
+        // Update node colors:
+        // Priority: main node (purple) > incomingSet (color #F05941) > forwardSet (mint green) > default gray.
+        node.select("circle").attr("fill", n => {
+          if (n.id === code) return "#9B59B6";           // Main node: purple
+          if (incomingSet.has(n.id)) return "#F05941";      // Direct incoming neighbor: orange-red
+          if (forwardSet.has(n.id)) return "#66D1AC";       // Forward-connected node: mint green
+          return "#666666";                               // Default
+        });
+
+        // Update link colors:
+        // For links directly incoming to the selected node, color them #F05941.
+        // For links where both endpoints are in the forward set, color them white.
+        // Else, default gray.
+        link.attr("stroke", l => {
+          if (l.target.id === code) return "#F05941";
+          if (forwardSet.has(l.source.id) && forwardSet.has(l.target.id)) return "#FFFFFF";
+          return "#3A3A3A";
+        });
+      }
+
+      // Function to clear all highlights and persistent selection
+      function clearHighlight() {
+        persistentHighlight = null;
+        node.select("circle").attr("fill", "#666666");
+        link.attr("stroke", "#3A3A3A");
+      }
+
+      // Mouseover: temporary highlight (if no persistent selection)
+      node.on("mouseover", function(event, d) {
+          if (!persistentHighlight) {
+            highlightNode(d.id);
+          }
+          const incoming = graph.links.filter(l => l.target.id === d.id)
+                                      .map(l => l.source.id);
+          const outgoing = graph.links.filter(l => l.source.id === d.id)
+                                      .map(l => l.target.id);
+          tooltip.transition().duration(200).style("opacity", 0.9);
+          tooltip.html(`<strong>${d.id}</strong><br>Influence: ${d.influence}<br>
+                        <strong>Incoming:</strong> ${incoming.join(', ')}<br>
+                        <strong>Outgoing:</strong> ${outgoing.join(', ')}<br>
+                        <strong>Date Opened:</strong> ${d.date_account_opened || "N/A"}`)
+                 .style("left", (event.pageX + 10) + "px")
+                 .style("top", (event.pageY - 28) + "px");
+      })
+      .on("mouseout", function(event, d) {
+          if (!persistentHighlight) {
+            clearHighlight();
+          }
+          tooltip.transition().duration(500).style("opacity", 0);
+      })
+      // Click: persist the highlight on the node.
+      .on("click", function(event, d) {
+          persistentHighlight = d.id;
+          highlightNode(d.id);
+      });
+
+      // Update simulation positions on each tick
+      simulation.on("tick", () => {
+          link.attr("x1", d => d.source.x)
+              .attr("y1", d => d.source.y)
+              .attr("x2", d => d.target.x)
+              .attr("y2", d => d.target.y);
+
+          node.attr("transform", d => `translate(${d.x},${d.y})`);
+      });
+
+      // Drag event handlers
+      function dragstarted(event, d) {
+          if (!event.active) simulation.alphaTarget(0.3).restart();
+          d.fx = d.x;
+          d.fy = d.y;
+      }
+      function dragged(event, d) {
+          d.fx = event.x;
+          d.fy = event.y;
+      }
+      function dragended(event, d) {
+          if (!event.active) simulation.alphaTarget(0);
+          d.fx = null;
+          d.fy = null;
+      }
+
+      // Set up the event for the "Highlight" button (from text input)
+      d3.select("#highlightButton").on("click", function() {
+        const code = document.getElementById("codeInput").value.trim();
+        if (code) {
+          persistentHighlight = code;
+          highlightNode(code);
+          // Focus on the node if it exists by centering it in the view
+          const target = graph.nodes.find(n => n.id === code);
+          if (target) {
+            const scale = 1; // Desired zoom level
+            const translateX = width / 2 - target.x * scale;
+            const translateY = height / 2 - target.y * scale;
+            const transform = d3.zoomIdentity.translate(translateX, translateY).scale(scale);
+            svg.transition().duration(750).call(zoomBehavior.transform, transform);
+          }
+        }
+      });
+
+      // Set up the event for the "Clear Highlight" button
+      d3.select("#clearButton").on("click", function() {
+        clearHighlight();
+      });
+    });
+
+    // Update SVG dimensions on window resize
+    window.addEventListener("resize", function() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      svg.attr("width", width)
+         .attr("height", height)
+         .attr("viewBox", `0 0 ${width} ${height}`);
+    });
+  </script>
+</body>
+</html>
