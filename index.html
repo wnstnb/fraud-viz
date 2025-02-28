@@ -2,8 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <!-- <title>D3 Responsive Force-Directed Graph with Zoom, Focus, Persistent & Mixed Highlighting</title> -->
-  <title>Referral Code Graph</title>
+  <title>D3 Responsive Force-Directed Graph with Dynamic Cluster Filter</title>
   <style>
     html, body {
       margin: 0;
@@ -11,6 +10,7 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
+      background-color: #2C2C2C;
     }
     svg {
       display: block;
@@ -37,6 +37,9 @@
     <input id="codeInput" type="text" placeholder="Enter code..." />
     <button id="highlightButton">Highlight</button>
     <button id="clearButton">Clear Highlight</button>
+    <br />
+    <label for="minClusterInput">Min Cluster Size:</label>
+    <input id="minClusterInput" type="number" value="3" min="1" />
   </div>
   
   <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -44,22 +47,20 @@
     let width = window.innerWidth,
         height = window.innerHeight;
     
-    // Variable to hold the persistent highlighted node id (if any)
+    // Variable to hold persistent highlighted node (if any)
     let persistentHighlight = null;
+    let originalGraph = null; // to store the original graph data
 
-    // Create the SVG container with a viewBox for responsiveness
+    // Create the SVG container with a responsive viewBox
     const svg = d3.select("body").append("svg")
-                    .style("margin", 0)
-                    .style("padding", 0)
-                    .style("background-color", "#2C2C2C")
-                  .attr("width", width)
-                  .attr("height", height)
-                  .attr("viewBox", `0 0 ${width} ${height}`);
+                    .attr("width", width)
+                    .attr("height", height)
+                    .attr("viewBox", `0 0 ${width} ${height}`);
 
-    // Append a container <g> to hold all graph elements
+    // Append a container <g> for all graph elements
     const container = svg.append("g");
 
-    // Define zoom behavior and store its reference
+    // Define zoom behavior
     const zoomBehavior = d3.zoom()
       .scaleExtent([0.1, 10])
       .on("zoom", (event) => {
@@ -69,11 +70,7 @@
 
     // Load the graph data from the JSON file
     d3.json("graph_data.json").then(function(graph) {
-
-      // (Optional) If your nodes have dates, parse them:
-      // graph.nodes.forEach(n => {
-      //   n.openedDate = new Date(n.date_account_opened);
-      // });
+      originalGraph = graph; // keep a reference to the original graph data
 
       // Set up the force simulation
       const simulation = d3.forceSimulation(graph.nodes)
@@ -83,7 +80,7 @@
                            .force("charge", d3.forceManyBody().strength(-200))
                            .force("center", d3.forceCenter(width / 2, height / 2));
 
-      // Draw links (edges) inside the container
+      // Draw links inside the container
       const link = container.append("g")
                             .attr("class", "links")
                             .attr("stroke", "#3A3A3A")
@@ -108,16 +105,16 @@
       // Append circles for nodes (size scaled by influence)
       node.append("circle")
           .attr("r", d => 5 + d.influence)
-          .attr("fill", "#666666");  // default color
+          .attr("fill", "#666666");
 
-      // Append text labels only for nodes with influence > 5
+      // Append text labels for nodes with influence > 5
       node.append("text")
           .attr("x", 8)
           .attr("y", 3)
           .text(d => d.influence > 5 ? d.id : "")
           .style("font-size", "10px");
 
-      // Create a tooltip div for hover details
+      // Tooltip for node details
       const tooltip = d3.select("body").append("div")
                         .style("position", "absolute")
                         .style("text-align", "left")
@@ -129,68 +126,123 @@
                         .style("pointer-events", "none")
                         .style("opacity", 0);
 
-      // Helper function: compute forward connections (BFS following outgoing edges)
-      // Here we simply follow links from the node; you could incorporate date logic if needed.
-      function computeForwardConnections(startId) {
+      // --- Dynamic Cluster Filtering ---
+      // Compute connected components (as weakly connected, i.e., undirected)
+      function computeComponents(nodes, links) {
+        const adj = {};
+        nodes.forEach(n => { adj[n.id] = new Set(); });
+        links.forEach(l => {
+          // Depending on your data, l.source and l.target can be objects or strings.
+          const s = l.source.id ? l.source.id : l.source;
+          const t = l.target.id ? l.target.id : l.target;
+          adj[s].add(t);
+          adj[t].add(s);
+        });
         const visited = new Set();
-        const queue = [startId];
-        while (queue.length) {
-          const current = queue.shift();
-          if (!visited.has(current)) {
-            visited.add(current);
-            graph.links.forEach(l => {
-              // Follow outgoing edge if current is the source.
-              if (l.source.id === current) {
-                if (!visited.has(l.target.id)) {
-                  queue.push(l.target.id);
-                }
+        const compSizes = {};
+        nodes.forEach(n => {
+          if (!visited.has(n.id)) {
+            const comp = [];
+            const queue = [n.id];
+            while(queue.length) {
+              const curr = queue.shift();
+              if (!visited.has(curr)) {
+                visited.add(curr);
+                comp.push(curr);
+                adj[curr].forEach(neighbor => {
+                  if (!visited.has(neighbor)) queue.push(neighbor);
+                });
               }
+            }
+            comp.forEach(id => {
+              compSizes[id] = comp.length;
             });
           }
-        }
-        return visited;
+        });
+        return compSizes;
       }
+      
+      // Function to filter out clusters smaller than minSize
+      function filterClusters(minSize) {
+        const compSizes = computeComponents(graph.nodes, graph.links);
+        // Hide nodes not meeting the threshold
+        node.style("display", d => (compSizes[d.id] >= minSize ? null : "none"));
+        // Hide links if either endpoint is hidden
+        link.style("display", l => {
+          const s = l.source.id ? l.source.id : l.source;
+          const t = l.target.id ? l.target.id : l.target;
+          return (compSizes[s] >= minSize && compSizes[t] >= minSize) ? null : "none";
+        });
+      }
+      
+      // Add event listener for min cluster filter input
+      d3.select("#minClusterInput").on("input", function() {
+        const minSize = +this.value;
+        filterClusters(minSize);
+      });
+      // Initial filter call
+      filterClusters(+d3.select("#minClusterInput").property("value"));
 
-      // Function to highlight a node, its full forward connectivity, and one level of incoming neighbors.
+      // --- End Dynamic Cluster Filtering ---
+
+      // --- Highlighting ---
+      // Function to highlight a node, its forward (outgoing) connections,
+      // and one level of incoming connections.
       function highlightNode(code) {
-        // Compute forward connectivity (all nodes reachable following outgoing edges)
+        // Compute forward connectivity: all nodes reachable following outgoing edges.
+        function computeForwardConnections(startId) {
+          const visited = new Set();
+          const queue = [startId];
+          while(queue.length) {
+            const current = queue.shift();
+            if (!visited.has(current)) {
+              visited.add(current);
+              graph.links.forEach(l => {
+                if (l.source.id === current && !visited.has(l.target.id)) {
+                  queue.push(l.target.id);
+                }
+              });
+            }
+          }
+          return visited;
+        }
         const forwardSet = computeForwardConnections(code);
-        // Compute one-level incoming connections: nodes that directly point to the selected node.
+        
+        // Compute one-level incoming: nodes that have a link to the selected node.
         const incomingSet = new Set();
         graph.links.forEach(l => {
           if (l.target.id === code) {
             incomingSet.add(l.source.id);
           }
         });
-
+        
         // Update node colors:
-        // Priority: main node (purple) > incomingSet (color #F05941) > forwardSet (mint green) > default gray.
         node.select("circle").attr("fill", n => {
-          if (n.id === code) return "#9B59B6";           // Main node: purple
-          if (incomingSet.has(n.id)) return "#F05941";      // Direct incoming neighbor: orange-red
-          if (forwardSet.has(n.id)) return "#66D1AC";       // Forward-connected node: mint green
-          return "#666666";                               // Default
+          if (n.id === code) return "#9B59B6";       // Selected node: purple
+          if (incomingSet.has(n.id)) return "#F05941";  // Immediate incoming: #F05941
+          if (forwardSet.has(n.id)) return "#66D1AC";   // Forward (outgoing) chain: mint green
+          return "#666666";                           // Default
         });
-
+        
         // Update link colors:
-        // For links directly incoming to the selected node, color them #F05941.
-        // For links where both endpoints are in the forward set, color them white.
-        // Else, default gray.
         link.attr("stroke", l => {
+          // If link is incoming directly to the selected node:
           if (l.target.id === code) return "#F05941";
+          // If both endpoints are in the forward set:
           if (forwardSet.has(l.source.id) && forwardSet.has(l.target.id)) return "#FFFFFF";
           return "#3A3A3A";
         });
       }
 
-      // Function to clear all highlights and persistent selection
+      // Function to clear all highlights
       function clearHighlight() {
         persistentHighlight = null;
         node.select("circle").attr("fill", "#666666");
         link.attr("stroke", "#3A3A3A");
       }
+      // --- End Highlighting ---
 
-      // Mouseover: temporary highlight (if no persistent selection)
+      // Node events
       node.on("mouseover", function(event, d) {
           if (!persistentHighlight) {
             highlightNode(d.id);
@@ -213,19 +265,17 @@
           }
           tooltip.transition().duration(500).style("opacity", 0);
       })
-      // Click: persist the highlight on the node.
       .on("click", function(event, d) {
           persistentHighlight = d.id;
           highlightNode(d.id);
       });
 
-      // Update simulation positions on each tick
+      // Simulation tick update
       simulation.on("tick", () => {
           link.attr("x1", d => d.source.x)
               .attr("y1", d => d.source.y)
               .attr("x2", d => d.target.x)
               .attr("y2", d => d.target.y);
-
           node.attr("transform", d => `translate(${d.x},${d.y})`);
       });
 
@@ -245,16 +295,15 @@
           d.fy = null;
       }
 
-      // Set up the event for the "Highlight" button (from text input)
+      // Set up event for "Highlight" button (from text input)
       d3.select("#highlightButton").on("click", function() {
         const code = document.getElementById("codeInput").value.trim();
         if (code) {
           persistentHighlight = code;
           highlightNode(code);
-          // Focus on the node if it exists by centering it in the view
           const target = graph.nodes.find(n => n.id === code);
           if (target) {
-            const scale = 1; // Desired zoom level
+            const scale = 1; 
             const translateX = width / 2 - target.x * scale;
             const translateY = height / 2 - target.y * scale;
             const transform = d3.zoomIdentity.translate(translateX, translateY).scale(scale);
@@ -263,7 +312,7 @@
         }
       });
 
-      // Set up the event for the "Clear Highlight" button
+      // Set up event for "Clear Highlight" button
       d3.select("#clearButton").on("click", function() {
         clearHighlight();
       });
